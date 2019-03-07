@@ -6,14 +6,13 @@ import socket
 from time import sleep
 from machine import Pin, SPI
 from ssd1351 import Display
-# import os
-# #挂载sd卡
-# try:
-#     os.sdconfig(os.SDMODE_4LINE)
-#     os.mountsd(1)
-# except:
-#     print("mounted sd card failed!")
-#     pass 
+import os
+#挂载sd卡
+try:
+    os.sdconfig(os.SDMODE_4LINE)
+    os.mountsd(1)
+except:
+    print("mounted sd card failed!")
 
 class OTV():
     def __init__(self):
@@ -23,12 +22,9 @@ class OTV():
                         cleansession=True, connected_cb=self.conncb, disconnected_cb=self.disconncb, 
                         subscribed_cb=self.subscb, published_cb=self.pubcb, data_cb=self.datacb)
 
-    def show_image(self, img_path=None, width=128, height=96, center=True):
+    def show_image(self, img_path, width=128, height=96, x=0,y=32):
         """Show image code."""
-        if img_path:
-            self.display.draw_image(img_path, 0, 32, width, height)
-        else:
-            self.display.draw_image('write_bug128x96.raw', 0, 32, 128, 96)
+        self.display.draw_image(img_path, x, y, width, height)
 
     def conncb(self, task):
         print("[{}] Connected".format(task))
@@ -49,12 +45,13 @@ class OTV():
         "image url|XX|XX|XX"
         '''
         # print("[{}] Data arrived from topic: {}, Message:\n".format(msg[0], msg[1]), msg[2])
-        _, image_url, image_size = msg[2].split('|')
+        _, image_url, image_size, position = msg[2].split('|')
         print("Received a task to show image:\nimage url:{},\nimage size:{}".format(image_url,image_size))
         download_image = self.http_image(image_url)
         w,h = image_size.split(',')
+        x,y = position.split(',')
         if download_image:
-            self.show_image(download_image, int(w),int(h))
+            self.show_image(download_image, int(w),int(h), int(x), int(y))
 
 #根据图片url下载对应的图片文件
     def http_image(self, url, image_name=None):
@@ -79,23 +76,16 @@ class OTV():
         s = socket.socket()
         s.connect(addr)
         s.send(bytes('GET /%s HTTP/1.0\r\nHost: %s\r\n\r\n' % (path, host), 'utf8'))
-        flag = 1
+        while True:
+            data = s.readline()
+            if not data or data == b"\r\n":
+                print(data)
+                break
+
         with open (image_name, 'wb') as f:
             while True:
-                data = s.recv(2048)
+                data = s.recv(512)
                 if data:
-                    if flag and b'\r\n\r\n' in data:
-                        headers, data = data.split(b'\r\n\r\n')
-                        headers = str(headers, "utf-8").split('\r\n')
-                        status_code = '200'
-                        if "HTTP/" in headers[0]:
-                            status_code = headers[0].split(' ',2)[1]
-                        flag = 0    
-                        if status_code != '200':
-                            print("get file failed，please check the url!")
-                            download = False
-                            # print("get file failed，please check the url!")
-                            break
                     f.write(data)
                 else:
                     print("download done!")

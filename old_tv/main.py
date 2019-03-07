@@ -10,7 +10,7 @@ import time
 sta_if = network.WLAN(network.STA_IF); sta_if.active(True)
 sta_if.connect(wifi_ssid, wifi_passwd)
 
-time.sleep(3)
+time.sleep(5)
 sta_if.ifconfig()
 
 rtc = machine.RTC()
@@ -20,11 +20,3 @@ network.ftp.start(user="esp32", password="micropython", buffsize=1024, timeout=3
 network.telnet.start(user="esp32", password="micropython", timeout=300)
 print("IP of this ESP32 is : " + sta_if.ifconfig()[0])
 print("Hello, Micropython!")
-
-import os
-#挂载sd卡
-try:
-    os.sdconfig(os.SDMODE_4LINE)
-    os.mountsd(1)
-except:
-    print("mounted sd card failed!")
