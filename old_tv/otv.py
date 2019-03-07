@@ -22,6 +22,9 @@ class OTV():
                         cleansession=True, connected_cb=self.conncb, disconnected_cb=self.disconncb, 
                         subscribed_cb=self.subscb, published_cb=self.pubcb, data_cb=self.datacb)
 
+    def publish(self, msg):
+        self.mqtt.publish('otv', 'Hi from Micropython')
+
     def conncb(self, task):
         print("[{}] Connected".format(task))
         self.mqtt.subscribe('otv')
@@ -38,7 +41,7 @@ class OTV():
     def datacb(self, msg):
         '''
         data format:
-        "image url|XX|XX|XX"
+        "tv_id|image url|XX|XX|XX"
         '''
         # print("[{}] Data arrived from topic: {}, Message:\n".format(msg[0], msg[1]), msg[2])
         _, image_url, image_size, position = msg[2].split('|')
@@ -50,7 +53,7 @@ class OTV():
             self.display.clear()
             self.display.draw_image(download_image, int(x), int(y), int(w), int(h))
 
-#根据图片url下载对应的图片文件
+    #根据图片url下载对应的图片文件
     def http_image(self, url, image_name=None):
         print("start download image:{}".format(url))
         try:
@@ -73,6 +76,7 @@ class OTV():
         s = socket.socket()
         s.connect(addr)
         s.send(bytes('GET /%s HTTP/1.0\r\nHost: %s\r\n\r\n' % (path, host), 'utf8'))
+        
         while True:
             data = s.readline()
             if not data or data == b"\r\n":
@@ -113,7 +117,8 @@ if __name__ == "__main__":
 '''
 # Wait until status is: (1, 'Connected')
 mqtt.subscribe('test')
-mqtt.publish('test', 'Hi from Micropython')
+publish(self, msg):
+self.mqtt.publish('otv', 'Hi from Micropython')
 mqtt.stop()
 '''
 
