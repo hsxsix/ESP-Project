@@ -22,10 +22,6 @@ class OTV():
                         cleansession=True, connected_cb=self.conncb, disconnected_cb=self.disconncb, 
                         subscribed_cb=self.subscb, published_cb=self.pubcb, data_cb=self.datacb)
 
-    def show_image(self, img_path, width=128, height=96, x=0,y=32):
-        """Show image code."""
-        self.display.draw_image(img_path, x, y, width, height)
-
     def conncb(self, task):
         print("[{}] Connected".format(task))
         self.mqtt.subscribe('otv')
@@ -51,7 +47,8 @@ class OTV():
         w,h = image_size.split(',')
         x,y = position.split(',')
         if download_image:
-            self.show_image(download_image, int(w),int(h), int(x), int(y))
+            self.display.clear()
+            self.display.draw_image(download_image, int(x), int(y), int(w), int(h))
 
 #根据图片url下载对应的图片文件
     def http_image(self, url, image_name=None):

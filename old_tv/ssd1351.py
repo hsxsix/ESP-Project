@@ -295,59 +295,6 @@ class Display(object):
                            x2, chunk_y + remainder - 1,
                            buf)
 
-    def draw_bytes(self, bytes_data, x=0, y=32, w=128, h=96):
-        x2 = x + w - 1
-        y2 = y + h - 1
-        if self.is_off_grid(x, y, x2, y2):
-            return
-        chunk_height = 1024 // w
-        chunk_count, remainder = divmod(h, chunk_height)
-        chunk_size = chunk_height * w * 2
-        chunk_y = y
-        if chunk_count:
-            for _ in range(0, chunk_count):
-                buf = bytes_data.read(chunk_size)
-                self.block(x, chunk_y,
-                            x2, chunk_y + chunk_height - 1,
-                            buf)
-                chunk_y += chunk_height
-        if remainder:
-            buf = bytes_data.read(remainder * w * 2)
-            self.block(x, chunk_y,
-                        x2, chunk_y + remainder - 1,
-                        buf)
-    
-    def draw_socket(self, sock, file_size, x=0, y=32, w=128, h=96):
-        x2 = x + w - 1
-        y2 = y + h - 1
-        if self.is_off_grid(x, y, x2, y2):
-            return
-        chunk_height = 1024 // w
-        chunk_count, remainder = divmod(h, chunk_height)
-        chunk_size = chunk_height * w * 2
-        chunk_y = y
-        if chunk_count:
-            recvd_size = 0
-            while recvd_size!=file_size:
-            # for _ in range(0, chunk_count):
-                if file_size - recvd_size>2048:
-                    data = sock.recv(2048)
-                    recvd_size += len(data)
-                else:
-                    data = sock.recv(2048)
-                    recvd_size = file_size
-                print(len(data))                
-                self.block(x, chunk_y,
-                            x2, chunk_y + chunk_height - 1,
-                            data)
-                chunk_y += chunk_height
-                # sleep_ms(200)
-        if remainder:
-            self.block(x, chunk_y,
-                        x2, chunk_y + remainder - 1,
-                        data)
-
-
     def draw_letter(self, x, y, letter, font, color, background=0,
                     landscape=False):
         """Draw a letter.

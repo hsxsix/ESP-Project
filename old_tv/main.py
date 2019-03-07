@@ -15,7 +15,7 @@ sta_if.ifconfig()
 
 rtc = machine.RTC()
 rtc.init((2018, 01, 01, 12, 12, 12))
-rtc.ntp_sync(server= "ntp.api.bz", tz=my_timezone, update_period=3600)
+rtc.ntp_sync(server= "", tz=my_timezone, update_period=3600)
 network.ftp.start(user="esp32", password="micropython", buffsize=1024, timeout=300)
 network.telnet.start(user="esp32", password="micropython", timeout=300)
 print("IP of this ESP32 is : " + sta_if.ifconfig()[0])
