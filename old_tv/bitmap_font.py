@@ -23,7 +23,7 @@ class BitmapFont(object):
     # Dict to tranlate bitwise values to byte position
     BIT_POS = {1: 0, 2: 2, 4: 4, 8: 6, 16: 8, 32: 10, 64: 12, 128: 14, 256: 16}
 
-    def __init__(self, bitmap, width, height, start_letter=32, letter_count=1):
+    def __init__(self, bitmap, width, height, letter_count=1):
         """Constructor for X-GLCD Font object.
 
         Args:
@@ -35,10 +35,9 @@ class BitmapFont(object):
         """
         self.width = width
         self.height = height
-        self.start_letter = start_letter
         self.letter_count = letter_count
         self.bytes_per_letter = (floor(
-            (self.height - 1) / 8) + 1) * self.width  # + 1
+            (self.height - 1) / 8) + 1) * self.width  #+ 1
         self.letters = bytearray(self.bytes_per_letter * self.letter_count)
         self.__load_xglcd_font(bitmap)
 
@@ -82,6 +81,7 @@ class BitmapFont(object):
 
         # Get width of letter (specified by first byte)
         letter_width = mv[0]
+        # letter_width = self.width
         letter_height = self.height
         # Get size in bytes of specified letter
         letter_size = letter_height * letter_width
@@ -118,23 +118,5 @@ class BitmapFont(object):
                 else:
                     # Increase position by remaing letter height to next column
                     pos += lh * 2
-                lh = letter_height
+            lh = letter_height
         return buf, letter_width, letter_height
-
-    def measure_text(self, text, spacing=1):
-        """Measure length of text string in pixels.
-
-        Args:
-            text (string): Text string to measure
-            spacing (optional int): Pixel spacing between letters.  Default: 1.
-        Returns:
-            int: length of text
-        """
-        length = 0
-        for letter in text:
-            # Get index of letter
-            letter_ord = ord(letter) - self.start_letter
-            offset = letter_ord * self.bytes_per_letter
-            # Add length of letter and spacing
-            length += self.letters[offset] + spacing
-        return length
