@@ -331,41 +331,6 @@ class Display(object):
             self.write_cmd(self.SET_REMAP, 0x74)  # Switch back to horizontal
         return w, h
 
-    def draw_bitmap(self, x, y, bitmap, color, background=0,
-                    landscape=False):
-        """Draw a letter.
-
-        Args:
-            x (int): Starting X position.
-            y (int): Starting Y position.
-            letter (string): Letter to draw.
-            font (XglcdFont object): Font.
-            color (int): RGB565 color value.
-            background (int): RGB565 background color (default: black).
-            landscape (bool): Orientation (default: False = portrait)
-        """
-        buf, w, h = bitmap.get_buf(color, background,landscape)
-        # Check for errors
-        if w == 0:
-            return w, h
-
-        if landscape:
-            y -= w
-            if self.is_off_grid(x, y, x + h - 1, y + w - 1):
-                return
-            self.block(x, y,
-                       x + h - 1, y + w - 1,
-                       buf)
-        else:
-            if self.is_off_grid(x, y, x + w - 1, y + h - 1):
-                return
-            self.write_cmd(self.SET_REMAP, 0x75)  # Vertical address increment
-            self.block(x, y,
-                       x + w - 1, y + h - 1,
-                       buf)
-            self.write_cmd(self.SET_REMAP, 0x74)  # Switch back to horizontal
-        return w, h
-
     def draw_line(self, x1, y1, x2, y2, color):
         """Draw a line using Bresenham's algorithm.
 
