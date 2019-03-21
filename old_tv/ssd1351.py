@@ -1,6 +1,6 @@
 """SSD1351 OLED module."""
 from utime import sleep_ms
-from math import cos, sin, pi, radians
+from math import cos, sin, pi, radians, floor
 
 
 def color565(r, g, b):
@@ -52,6 +52,7 @@ class Display(object):
     HORIZ_SCROLL = const(0x96)
     STOP_SCROLL = const(0x9E)
     START_SCROLL = const(0x9F)
+    BIT_POS = {1: 0, 2: 2, 4: 4, 8: 6, 16: 8, 32: 10, 64: 12, 128: 14, 256: 16}
 
     def __init__(self, spi, cs, dc, rst, width=128, height=128):
         """Initialize OLED.
@@ -294,6 +295,76 @@ class Display(object):
                 self.block(x, chunk_y,
                            x2, chunk_y + remainder - 1,
                            buf)
+
+    
+    def _lit_bits(self, n):
+        """Return positions of 1 bits only."""
+        while n:
+            b = n & (~n+1)
+            yield self.BIT_POS[b]
+            n ^= b
+
+    def array2buf(self, array, width, height, color, background=0, landscape=False):
+        bytes_per_letter = (floor(
+                (height - 1) / 8) + 1) * width + 1
+        letters = bytearray(bytes_per_letter)
+        mv = memoryview(letters)
+        mv[0: bytes_per_letter] = bytearray(
+            int(b, 16) for b in array.split(','))
+        letter_width = mv[0]
+        letter_size = height * letter_width
+        if background:
+            buf = bytearray(background.to_bytes(2, 'big') * letter_size)
+        else:
+            buf = bytearray(letter_size * 2)
+
+        msb, lsb = color.to_bytes(2, 'big')
+
+        if landscape:
+            pos = (letter_size * 2) - (height * 2)
+        else:
+            pos = 0
+
+        lh = height
+        for b in mv[1:]:
+            for bit in self._lit_bits(b):
+                buf[bit + pos] = msb
+                buf[bit + pos + 1] = lsb
+            if lh > 8:
+                pos += 16
+                lh -= 8
+            else:
+                if landscape:
+                    pos -= (height * 4) - (lh * 2)
+                else:
+                    pos += lh * 2
+            lh = height
+        return buf, letter_width, height
+
+    def draw_bitarray(self, x, y, array, width, height, color, background=0,
+                    landscape=False):
+        buf, w, h = self.array2buf(array,width,height, color, background,
+                                    landscape)
+        # Check for errors
+        if w == 0:
+            return w, h
+
+        if landscape:
+            y -= w
+            if self.is_off_grid(x, y, x + h - 1, y + w - 1):
+                return
+            self.block(x, y,
+                       x + h - 1, y + w - 1,
+                       buf)
+        else:
+            if self.is_off_grid(x, y, x + w - 1, y + h - 1):
+                return
+            self.write_cmd(self.SET_REMAP, 0x75)  # Vertical address increment
+            self.block(x, y,
+                       x + w - 1, y + h - 1,
+                       buf)
+            self.write_cmd(self.SET_REMAP, 0x74)  # Switch back to horizontal
+        return w, h
 
     def draw_letter(self, x, y, letter, font, color, background=0,
                     landscape=False):
