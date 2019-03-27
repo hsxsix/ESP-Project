@@ -1,8 +1,9 @@
 # old_tv project
 __author__ = "HeSixian"
 
-import network
+import json 
 import socket
+import network
 from time import sleep
 from machine import Pin, SPI
 from ssd1351 import Display
@@ -57,13 +58,21 @@ class OTV():
             self.display.clear()
             self.display.draw_image(download_image, int(x), int(y), int(w), int(h))
     
-    def show_weather(self):
+    def update_weather(self):
         # self.display("正在更新天气数据。。。")
-        weather_data = self.http_get(self.weather_api, types='text', file_name='weather.txt')
+        self.http_get(self.weather_api, types='text', 
+                    file_name='weather.txt')
         
+    def show_weather(self, data_file='weather.txt'):
+        with open(data_file, 'r') as f:
+            weather_data = json.loads(f.read())
+        
+
+
 
     #根据图片url下载对应的图片文件
     def http_get(self, url, types='image', file_name=None):
+        download = None
         print("start download image:{}".format(url))
         try:
             proto, dummy, host, path = url.split("/", 3)
@@ -91,7 +100,6 @@ class OTV():
             if not data or data == b"\r\n":
                 print(data)
                 break
-
         if types == 'image':
             with open (file_name, 'wb') as f:
                 while True:
