@@ -23,8 +23,8 @@ class OTV():
         self.mqtt = network.mqtt("otv", "mqtt://t.hsxsix.com", user="six", password="1234$#@!", 
                         cleansession=True, connected_cb=self.conncb, disconnected_cb=self.disconncb, 
                         subscribed_cb=self.subscb, published_cb=self.pubcb, data_cb=self.datacb)
-        
-        self.weather_api = 'http://118.24.144.127/weather/v1?city={}'
+        self.weather_data = {} 
+        self.weather_api = 'http://118.24.144.127/weather/v1?city={}&node=micropython_ssd1351'
 
     def publish(self, msg):
         self.mqtt.publish('otv', 'Hi from Micropython')
@@ -58,19 +58,45 @@ class OTV():
             self.display.clear()
             self.display.draw_image(download_image, int(x), int(y), int(w), int(h))
     
-    def update_weather(self):
-        # self.display("正在更新天气数据。。。")
+    def update_weather(self, weather_file='weather.txt'):
+        # self.display("update weather data。。。")
         self.http_get(self.weather_api, types='text', 
-                    file_name='weather.txt')
+                    file_name=weather_file)
+        with open(weather_file, 'r') as f:
+            self.weather_data = json.loads(f.read())
         
-    def show_weather(self, data_file='weather.txt'):
-        with open(data_file, 'r') as f:
-            weather_data = json.loads(f.read())
-        
+    def show_today_weather(self):
+        if weather_data['code'] == 'ok':
+            today_weather = self.weather_data['0']['weather_code']
+            current_temp = self.weather_data['0']['current_temp']
+            current_weather = self.weather_data['0']['current_weather']
+            date = self.weather_data['0']['date']
+            temp = self.weather_data['0']['temp']
+            today_aqi = self.weather_data['0']['aqi']
+            self.display.draw_image('{}.png'.format(today_weather),0,32,60,60)
+            for char in current_weather:
+                self.display.draw_bitarray(w_char, 0,32,15,16)
+            for char in current_temp:
+                self.display.draw_bitarray(w_char, 0,32,9,16)
+            for char in today_aqi:
+                self.display.draw_bitarray(w_char, 0,32,9,16)
+            for char in date:
+                self.display.draw_bitarray(w_char, 0,32,9,16)
+            for t_char in temp:
+                for char in t_char:
+                    self.display.draw_bitarray(w_char, 0,32,15,16)
+        else:
+            pass 
+            # self.display.draw_image("weather data error！")
 
+    def show_three_day_weather(self):
+        for day in ('1','2','3'):
+            weather = self.weather_data[day]['weather_code']
+            temp = self.weather_data[day]['temp']
+            date = self.weather_data[day]['date']
+            aqi = self.weather_data[day]['aqi']
 
-
-    #根据图片url下载对应的图片文件
+    # download file or image 
     def http_get(self, url, types='image', file_name=None):
         download = None
         print("start download image:{}".format(url))
