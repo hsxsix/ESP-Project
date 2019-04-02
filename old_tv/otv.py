@@ -73,7 +73,8 @@ class OTV():
             date = self.weather_data['0']['date']
             temp = self.weather_data['0']['temp']
             today_aqi = self.weather_data['0']['aqi']
-            self.display.draw_image('{}.png'.format(today_weather),0,32,60,60)
+            self.display.draw_image('bg.raw',0,32,128,96)
+            self.display.draw_image('{}.raw'.format(today_weather),5,37,50,50)
             for char in current_weather:
                 self.display.draw_bitarray(w_char, 0,32,15,16)
             for char in current_temp:
@@ -85,6 +86,7 @@ class OTV():
             for t_char in temp:
                 for char in t_char:
                     self.display.draw_bitarray(w_char, 0,32,15,16)
+                self.display.draw_bitarray(,) #℃
         else:
             pass 
             # self.display.draw_image("weather data error！")
