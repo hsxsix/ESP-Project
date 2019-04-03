@@ -5,7 +5,7 @@ import json
 import socket
 import network
 from time import sleep
-from machine import Pin, SPI
+from machine import Pin, SPI, Timer 
 from ssd1351 import Display
 import os
 #挂载sd卡
@@ -25,6 +25,9 @@ class OTV():
                         subscribed_cb=self.subscb, published_cb=self.pubcb, data_cb=self.datacb)
         self.weather_data = {} 
         self.weather_api = 'http://118.24.144.127/weather/v1?city={}&node=micropython_ssd1351'
+        self.weather_tm = Timer(2)
+        self.weather_tm.init(period=1000*60*20, 
+                mode=self.weather_tm.PERIODIC, callback=self.update_weather)
 
     def publish(self, msg):
         self.mqtt.publish('otv', 'Hi from Micropython')
@@ -58,10 +61,10 @@ class OTV():
             self.display.clear()
             self.display.draw_image(download_image, int(x), int(y), int(w), int(h))
     
-    def update_weather(self, weather_file='weather.txt'):
+    def update_weather(self, timer):
         # self.display("update weather data。。。")
         self.http_get(self.weather_api, types='text', 
-                    file_name=weather_file)
+                    file_name='weather.txt')
         with open(weather_file, 'r') as f:
             self.weather_data = json.loads(f.read())
         
@@ -75,18 +78,31 @@ class OTV():
             today_aqi = self.weather_data['0']['aqi']
             self.display.draw_image('bg.raw',0,32,128,96)
             self.display.draw_image('{}.raw'.format(today_weather),5,37,50,50)
+            i=0
             for char in current_weather:
-                self.display.draw_bitarray(w_char, 0,32,15,16)
-            for char in current_temp:
-                self.display.draw_bitarray(w_char, 0,32,9,16)
-            for char in today_aqi:
-                self.display.draw_bitarray(w_char, 0,32,9,16)
-            for char in date:
-                self.display.draw_bitarray(w_char, 0,32,9,16)
+                start_x=50+int((78-15*len(current_weather))/2)+15*i 
+                self.display.draw_bitarray(w_char, start_x,42,15,16)
+                i+=1
+
+            i=0
             for t_char in temp:
-                for char in t_char:
-                    self.display.draw_bitarray(w_char, 0,32,15,16)
-                self.display.draw_bitarray(,) #℃
+                start_x =50+int((78-9*len(current_weather))/2)+9*i 
+                self.display.draw_bitarray(w_char, start_x,64,9,16)
+                i+=1
+            
+            x = 9 if len(today_aqi)==9 else 5
+            for char in today_aqi:
+                if len(char) > 100:
+                    self.display.draw_bitarray(w_char, x,92,15,16)
+                    x = x+15
+                else:
+                    self.display.draw_bitarray(w_char, x,92,9,16)
+                    x = x+9
+            # for char in date:
+                # self.display.draw_bitarray(w_char, 0,32,9,16)
+
+            # for char in current_temp:
+                # self.display.draw_bitarray(w_char, 0,32,9,16)
         else:
             pass 
             # self.display.draw_image("weather data error！")
@@ -98,10 +114,8 @@ class OTV():
             date = self.weather_data[day]['date']
             aqi = self.weather_data[day]['aqi']
 
-    # download file or image 
     def http_get(self, url, types='image', file_name=None):
         download = None
-        print("start download image:{}".format(url))
         try:
             proto, dummy, host, path = url.split("/", 3)
         except ValueError:
@@ -135,7 +149,6 @@ class OTV():
                     if data:
                         f.write(data)
                     else:
-                        print("download done!")
                         download = file_name
                         break 
         else:
