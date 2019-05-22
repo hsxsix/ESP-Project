@@ -26,5 +26,4 @@ USB-TTL
 * 软件清单：
 MQTT Broker(推荐EMQ)
 Python3
-Home Assistant
-
+Home Assistant(可选，用于web控制)
