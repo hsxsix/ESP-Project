@@ -1,18 +1,20 @@
 #smart light base on micropython esp8266
+
 import wifi
 import time 
 import json
 import machine 
+import micropython
 import uasyncio as asyncio 
 from neopixel import NeoPixel
 from umqtt.simple import MQTTClient
-# from umqtt.robust import MQTTClient 
 from machine import Pin, Timer, WDT
 
 import config 
+from status_code import code_table 
 
 # wifi.activate()
-# micropython.alloc_emergency_exception_buf(100)
+micropython.alloc_emergency_exception_buf(100)
 
 class SmartLight():
     def __init__(self):
@@ -20,7 +22,15 @@ class SmartLight():
         self.ping_fail = 0
         self.ping_mqtt = 0
         self.int_err_count = 0
+        self.sensor_interrupt = 0
+        self.button_interrupt_1 = 0
+        self.button_interrupt_2 = 0
+        self.auto_human = config.AUTO_HUMAN
+        self.auto_sound = config.AUTO_SOUND
+        self.auto_light = config.AUTO_LIGHT
         self.current_color = [255,255,255]
+        self.light_state = 0
+        self.light_intensity = 0
         self.light_status = {
                         "state":"OFF", 
                         "brightness":100, 
@@ -30,23 +40,33 @@ class SmartLight():
                             "b":255
                             }, 
                         "effetc":""
-                            }
+                        }
         
-        # self.bt_pin = Pin(config.ButtonPin, Pin.IN)
         self.np = NeoPixel(Pin(config.WS2812_PIN, Pin.OUT), config.WS2812_BIT)
 
         self.mqtt_client = MQTTClient("color_light", config.MQTT_SERVER, 
                         config.MQTT_PORT,config.MQTT_USER, config.MQTT_PASSWD)
         self.mqtt_client.set_callback(self.sub_callback)
         self.mqtt_client.set_last_will(config.AVAILABILITY_TOPIC, "offline")
-    
+        
+        self.human_sensor_1 = Pin(config.HUMAN_SENSOR_PIN_1, Pin.IN, Pin.PULL_UP)
+        self.human_sensor_2 = Pin(config.HUMAN_SENSOR_PIN_2, Pin.IN, Pin.PULL_UP)
+        self,human_sensor_3 = Pin(config.HUMAN_SENSOR_PIN_3, Pin.IN, Pin.PULL_UP)
+        self.sound_sensor = Pin(config.SOUND_SENSOR_PIN, Pin.IN, Pin.PULL_UP)
+        self.button_1 = Pin(config.BUTTON_PIN_1, Pin.IN, Pin.PULL_UP)
+        self.button_2 = Pin(config.BUTTON_PIN_2, Pin.IN, Pin.PULL_UP)
+
     def mqtt_connect(self):
         try:
             self.mqtt_client.connect()
-            for topic in [config.STATUS_TOPIC, config.SET_TOPIC, config.MQTT_CHECK_TOPIC]:
+            for topic in [config.STATUS_TOPIC, config.SET_TOPIC, config.MQTT_CHECK_TOPIC,
+                    config.HUMAN_SET_TOPIC, config.LIGHT_SET_TOPIC, config.SOUND_SET_TOPIC]:
                 self.mqtt_client.subscribe(topic)
             self.mqtt_client.publish(config.AVAILABILITY_TOPIC, "online")
             self.mqtt_client.publish(config.STATUS_TOPIC, json.dumps(self.light_status))
+            self.mqtt_client.publish(config.HUMAN_SET_TOPIC, self.auto_human)
+            self.mqtt_client.publish(config.LIGHT_SET_TOPIC, self.auto_light)
+            self.mqtt_client.publish(config.SOUND_SET_TOPIC, self.auto_sound)
         except Exception as e:
             print("mqtt connect faild", e) 
 
@@ -62,22 +82,46 @@ class SmartLight():
     def show_effects(self, effect):
         print(effect) 
 
-    def sub_callback(self, topic, mesg):
-        if topic.decode('utf-8') == config.SET_TOPIC:
-            msg = json.loads(mesg.decode('utf-8'))
+    def sub_callback(self, topic, msg):
+        topic = topic.decode('utf-8')
+        msg = msg.decode('utf-8')
+        if topic == config.SET_TOPIC:
+            msg = json.loads(meg)
             state = msg.get('state', '')
             brightness = msg.get('brightness', '')
             color = msg.get('color', {})
             effect = msg.get('effect', '')
             self.light_control(state, brightness, color, effect)
             # self.mqtt_client.publish(config.STATUS_TOPIC, mesg)
-        if topic.decode('utf-8') == config.MQTT_CHECK_TOPIC:
-            if int(mesg.decode('utf-8')) == self.ping_mqtt:
+        elif topic == config.MQTT_CHECK_TOPIC:
+            if int(msg) == self.ping_mqtt:
                 # print("MQTT is OK")
                 self.ping_fail = 0
+        elif topic == config.HUMAN_SET_TOPIC:
+            if msg == "ON":
+                self.auto_human = 1
+                self.mqtt_client.publish(config.HUMAN_SET_TOPIC, "ON")
+            elif msg == "OFF":
+                self.auto_human = 0
+                self.mqtt_client.publish(config.HUMAN_SET_TOPIC, "OFF")
+        elif topic == config.LIGHT_SET_TOPIC:
+            if msg == "ON":
+                self.auto_light = 1
+                self.mqtt_client.publish(config.LIGHT_SET_TOPIC, "ON")
+            elif msg == "OFF":
+                self.auto_light = 0
+                self.mqtt_client.publish(config.LIGHT_SET_TOPIC, "OFF")
+        elif topic == config.SOUND_SET_TOPIC:
+            if msg == "ON":
+                self.auto_sound = 1
+                self.mqtt_client.publish(config.SOUND_SET_TOPIC, "ON")
+            elif msg == "OFF":
+                self.auto_sound = 0
+                self.mqtt_client.publish(config.SOUND_SET_TOPIC, "OFF")
 
 
     def light_control(self, state, brightness, color, effect):
+        # TODO:当灯处于关闭状态时调节亮度无效的
         if color:
             self.set_color(color)
             self.light_status["state"] = "ON" 
@@ -107,6 +151,27 @@ class SmartLight():
                 self.light_status["state"] = "ON"
         self.mqtt_client.publish(config.STATUS_TOPIC, json.dumps(self.light_status))
 
+    def sensor_action(self, pin):
+        if self.auto_light:
+            self.light_intensity = self.get_light_intensity()
+        else:
+            self.light_intensity = 0
+        
+        code = "{}{}{}{}".format(self.auto_sound, self.auto_light, 
+                                self.light_intensity, self.light_state)
+        are_light = code_table[code]
+        self.sensor_interrupt = self.sensor_interrupt + 1
+    
+    def button_action_1(self, pin):
+        self.button_interrupt_1 = self.button_action_1 + 1
+
+    def button_action_2(self, pin):
+        self.button_interrupt_2 = self.button_interrupt_2 + 1
+
+    def get_light_intensity(self):
+        li = 540
+        return 1 if li > 512 else 0 
+    
     def internet_connected(self):
         return True 
 
@@ -167,10 +232,13 @@ class SmartLight():
     
 
     def run(self):
-        # self.ss_pin.irq(trigger=Pin.IRQ_FALLING, handler=self.sound_action)
-        # self.bt_pin.irq(trigger=Pin.IRQ_FALLING, handler=self.button_action)
-        # self.human_break_tm.init(period=self.human_interval*1000, mode=Timer.PERIODIC, 
-                    # callback=lambda t:self.human_action())
+        self.sound_sensor.irq(trigger=Pin.IRQ_FALLING, handler=self.sensor_action)
+        self.human_sensor_1.irq(trigger=Pin.IRQ_FALLING, handler=self.sensor_action)
+        self.human_sensor_2.irq(trigger=Pin.IRQ_FALLING, handler=self.sensor_action)
+        self.human_sensor_3.irq(trigger=Pin.IRQ_FALLING, handler=self.sensor_action)
+        self.button_1.irq(trigger=Pin.IRQ_FALLING, handler=self.button_action_1) 
+        self.button_2.irq(trigger=Pin.IRQ_FALLING, handler=self.button_action_2)
+        
         try:
             loop = asyncio.get_event_loop()
             loop.create_task(self.check_message())
