@@ -230,7 +230,6 @@ class SmartLight():
             pass
             # print("Error in Internet connection: [Exception] %s: %s" % (type(error).__name__, error))
     
-
     def run(self):
         self.sound_sensor.irq(trigger=Pin.IRQ_FALLING, handler=self.sensor_action)
         self.human_sensor_1.irq(trigger=Pin.IRQ_FALLING, handler=self.sensor_action)
@@ -247,7 +246,6 @@ class SmartLight():
             loop.run_forever()
         except Exception as e:
             print(e)
-
 
 # sl = SmartLight()
 # sl.run()
