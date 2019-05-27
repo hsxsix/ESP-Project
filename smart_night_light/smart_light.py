@@ -19,18 +19,19 @@ micropython.alloc_emergency_exception_buf(100)
 class SmartLight():
     def __init__(self):
         self.wdt = WDT()
+        self.tim = Timer(1)
         self.ping_fail = 0
         self.ping_mqtt = 0
+        self.light_state = 0
         self.int_err_count = 0
+        self.light_intensity = 0
         self.sensor_interrupt = 0
         self.button_interrupt_1 = 0
         self.button_interrupt_2 = 0
+        self.current_color = [255,255,255]
         self.auto_human = config.AUTO_HUMAN
         self.auto_sound = config.AUTO_SOUND
         self.auto_light = config.AUTO_LIGHT
-        self.current_color = [255,255,255]
-        self.light_state = 0
-        self.light_intensity = 0
         self.light_status = {
                         "state":"OFF", 
                         "brightness":100, 
@@ -124,31 +125,35 @@ class SmartLight():
         # TODO:当灯处于关闭状态时调节亮度无效的
         if color:
             self.set_color(color)
+            self.light_state = 2
             self.light_status["state"] = "ON" 
             self.light_status['color'] = color 
             self.light_status['brightness'] = int(max(color.values()) / 255 * 100)
         if type(brightness) == int:
-            print("brightness:", brightness)
             if brightness == 0:
                 # print("turn off")
                 self.set_color(config.DefaultOffColor)
+                self.light_state = 0
             else:
                 scale = max(self.light_status["color"].values())/int(brightness / 100 * 255)
                 for c in ['r', 'g', 'b']:
                     self.light_status["color"][c] = int(self.light_status["color"][c]/scale)
                 self.set_color(self.light_status["color"])
+                self.light_state = 2
             self.light_status["brightness"] = brightness 
         if effect:
             self.show_effects(effect)
         if state == "OFF":
             self.light_status["state"] = "OFF"
-            self.set_color(config.DefaultOffColor)
+            self.set_color(config.DEFAULT_OFF_COLOR)
+            self.light_state = 0
         if state == "ON":
             if any([color, type(brightness)==int, effect]):
                 pass 
             else:
-                self.set_color(config.DefaultColor)
+                self.set_color(config.DEFAULT_COLOR)
                 self.light_status["state"] = "ON"
+                self.light_state = 2
         self.mqtt_client.publish(config.STATUS_TOPIC, json.dumps(self.light_status))
 
     def sensor_action(self, pin):
@@ -157,9 +162,22 @@ class SmartLight():
         else:
             self.light_intensity = 0
         
-        code = "{}{}{}{}".format(self.auto_sound, self.auto_light, 
+        if pin == config.SOUND_SENSOR_PIN:
+            code = "{}{}{}{}".format(self.auto_sound, self.auto_light, 
+                                self.light_intensity, self.light_state)
+        else:
+            code = "{}{}{}{}".format(self.auto_human, self.auto_light,
                                 self.light_intensity, self.light_state)
         are_light = code_table[code]
+        if are_light == 1:
+            self.set_color(config.DEFAULT_COLOR)
+            self.tim.init(period=config.DELAY_TIME*1000, mode=Timer.ONE_SHOT,
+                        callback=lambda t: self.set_color(config.DEFAULT_OFF_COLOR))
+            self.light_state = 1
+            print("Turn off the lights after {} s".format(config.DELAY_TIME))
+        else:
+            pass
+
         self.sensor_interrupt = self.sensor_interrupt + 1
     
     def button_action_1(self, pin):
