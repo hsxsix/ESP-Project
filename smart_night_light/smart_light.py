@@ -19,7 +19,8 @@ micropython.alloc_emergency_exception_buf(100)
 class SmartLight():
     def __init__(self):
         self.wdt = WDT()
-        self.tim = Timer(1)
+        self.auto_tim = Timer(1)
+        self.publish_tim = Timer(2)
         self.ping_fail = 0
         self.ping_mqtt = 0
         self.light_state = 0
@@ -154,34 +155,20 @@ class SmartLight():
                 self.set_color(config.DEFAULT_COLOR)
                 self.light_status["state"] = "ON"
                 self.light_state = 2
-        self.mqtt_client.publish(config.STATUS_TOPIC, json.dumps(self.light_status))
 
     def sensor_action(self, pin):
-        if self.auto_light:
-            self.light_intensity = self.get_light_intensity()
-        else:
-            self.light_intensity = 0
-        
-        if pin == config.SOUND_SENSOR_PIN:
-            code = "{}{}{}{}".format(self.auto_sound, self.auto_light, 
-                                self.light_intensity, self.light_state)
-        else:
-            code = "{}{}{}{}".format(self.auto_human, self.auto_light,
-                                self.light_intensity, self.light_state)
-        are_light = code_table[code]
-        if are_light == 1:
-            self.set_color(config.DEFAULT_COLOR)
-            self.tim.init(period=config.DELAY_TIME*1000, mode=Timer.ONE_SHOT,
-                        callback=lambda t: self.set_color(config.DEFAULT_OFF_COLOR))
-            self.light_state = 1
-            print("Turn off the lights after {} s".format(config.DELAY_TIME))
-        else:
-            pass
-
-        self.sensor_interrupt = self.sensor_interrupt + 1
+        self.sensor_interrupt = self.sensor_interrupt+1
     
     def button_action_1(self, pin):
         self.button_interrupt_1 = self.button_action_1 + 1
+        if self.light_state = 0:
+            self.set_color(config.DEFAULT_COLOR)
+            self.light_state = 1
+            self.light_status["state"] = "ON"
+        else self.light_state = 1:
+            self.set_color(config.DEFAULT_OFF_COLOR)
+            self.light_state = 0
+            self.light_status["state"] = "OFF"
 
     def button_action_2(self, pin):
         self.button_interrupt_2 = self.button_interrupt_2 + 1
@@ -190,8 +177,38 @@ class SmartLight():
         li = 540
         return 1 if li > 512 else 0 
     
+    def publish_light_status(self):
+        if self.ping_fail = 0:
+            self.mqtt_client.publish(config.STATUS_TOPIC, json.dumps(self.light_status))
+
     def internet_connected(self):
         return True 
+
+    async def check_interrupt(self):
+        while True:
+            await asyncio.slepp(0.5)
+            if self.sensor_interrupt>0:
+                if self.auto_light:
+                    self.light_intensity = self.get_light_intensity()
+                else:
+                    self.light_intensity = 0
+                
+                if pin == config.SOUND_SENSOR_PIN:
+                    code = "{}{}{}{}".format(self.auto_sound, self.auto_light, 
+                                        self.light_intensity, self.light_state)
+                else:
+                    code = "{}{}{}{}".format(self.auto_human, self.auto_light,
+                                        self.light_intensity, self.light_state)
+                are_light = code_table[code]
+                if are_light == 1:
+                    self.set_color(config.DEFAULT_COLOR)
+                    self.auto_tim.init(period=config.DELAY_TIME*1000, mode=Timer.ONE_SHOT,
+                                callback=lambda t: self.set_color(config.DEFAULT_OFF_COLOR))
+                    self.light_state = 1
+                    print("Turn off the lights after {} s".format(config.DELAY_TIME))
+                else:
+                    pass
+                self.sensor_interrupt = 0
 
     # Check MQTT brocker
     async def mqtt_check(self):
@@ -249,6 +266,7 @@ class SmartLight():
             # print("Error in Internet connection: [Exception] %s: %s" % (type(error).__name__, error))
     
     def run(self):
+        self.publish_tim.init(period=1000, mode=Timer.PERIODIC, callback=self.publish_light_status)
         self.sound_sensor.irq(trigger=Pin.IRQ_FALLING, handler=self.sensor_action)
         self.human_sensor_1.irq(trigger=Pin.IRQ_FALLING, handler=self.sensor_action)
         self.human_sensor_2.irq(trigger=Pin.IRQ_FALLING, handler=self.sensor_action)
