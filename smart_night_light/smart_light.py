@@ -94,7 +94,7 @@ class SmartLight():
             color = msg.get('color', {})
             effect = msg.get('effect', '')
             self.light_control(state, brightness, color, effect)
-            # self.mqtt_client.publish(config.STATUS_TOPIC, mesg)
+            self.mqtt_client.publish(config.STATUS_TOPIC, json.dumps(self.light_status))
         elif topic == config.MQTT_CHECK_TOPIC:
             if int(msg) == self.ping_mqtt:
                 # print("MQTT is OK")
@@ -169,6 +169,8 @@ class SmartLight():
             self.set_color(config.DEFAULT_OFF_COLOR)
             self.light_state = 0
             self.light_status["state"] = "OFF"
+        self.publish_tim.init(period=1000, mode=Timer.ONE_SHOT, callback=self.publish_light_status)
+        
 
     def button_action_2(self, pin):
         self.button_interrupt_2 = self.button_interrupt_2 + 1
@@ -266,7 +268,6 @@ class SmartLight():
             # print("Error in Internet connection: [Exception] %s: %s" % (type(error).__name__, error))
     
     def run(self):
-        self.publish_tim.init(period=1000, mode=Timer.PERIODIC, callback=self.publish_light_status)
         self.sound_sensor.irq(trigger=Pin.IRQ_FALLING, handler=self.sensor_action)
         self.human_sensor_1.irq(trigger=Pin.IRQ_FALLING, handler=self.sensor_action)
         self.human_sensor_2.irq(trigger=Pin.IRQ_FALLING, handler=self.sensor_action)
