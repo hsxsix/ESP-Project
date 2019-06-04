@@ -1,6 +1,7 @@
 # WZ-S python example
 
 import serial
+import serial.tools.list_ports
 import time 
 
 class wzs_sensor():
@@ -15,7 +16,7 @@ class wzs_sensor():
                 dsrdtr=False,
                 inter_byte_timeout=None,
                 exclusive=None)
-        if serial.is_open:
+        if self.serial.is_open:
             self.serial.close()
         self.serial_list = list(serial.tools.list_ports.comports())
         if len(self.serial_list) < 1:
@@ -47,6 +48,6 @@ if __name__ == "__main__":
     wzs = wzs_sensor()
     formaldehyde = wzs.read_value()
     if formaldehyde != None:
-        print(f"当前室内的甲醛浓度为:{formaldehyde} ppb\n国标为0.08mg/m³,约66ppb = 0.066 ppm")
+        print(f"当前室内的甲醛浓度为:{formaldehyde} ppb\n国标为0.08mg/m³,约66ppb, 0.066 ppm")
     else:
         print("数据读取错误！")
