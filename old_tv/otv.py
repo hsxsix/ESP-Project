@@ -1,11 +1,11 @@
 # old_tv project
 __author__ = "HeSixian"
 
-import json 
+import json
 import socket
 import network
 from time import sleep
-from machine import Pin, SPI, Timer 
+from machine import Pin, SPI, Timer
 from ssd1351 import Display
 import os
 #挂载sd卡
@@ -31,7 +31,7 @@ class OTV():
 
     def publish(self, msg):
         self.mqtt.publish('otv', 'Hi from Micropython')
-    
+
     def conncb(self, task):
         # self.dispaly("连接MQTT成功")
         print("[{}] Connected".format(task))
@@ -60,23 +60,23 @@ class OTV():
         if download_image:
             self.display.clear()
             self.display.draw_image(download_image, int(x), int(y), int(w), int(h))
-    
+
     def update_weather(self, timer):
         # self.display("update weather data。。。")
-        self.http_get(self.weather_api, types='text', 
+        self.http_get(self.weather_api, types='text',
                     file_name='weather.txt')
         with open(weather_file, 'r') as f:
             self.weather_data = json.loads(f.read())
-        
+
     def show_today_weather(self):
-        if weather_data['code'] == 'ok':
+        if self.weather_data['code'] == 'ok':
             today_weather = self.weather_data['0']['weather_code']
             current_temp = self.weather_data['0']['current_temp']
             current_weather = self.weather_data['0']['current_weather']
             date = self.weather_data['0']['date']
             temp = self.weather_data['0']['temp']
             today_aqi = self.weather_data['0']['aqi']
-            self.display.draw_image('bg.raw',0,32,128,96)
+            # self.display.draw_image('bg.raw',0,32,128,96)
             self.display.draw_image('{}.raw'.format(today_weather),5,37,50,50)
             i=0
             for char in current_weather:
@@ -89,7 +89,7 @@ class OTV():
                 start_x =50+int((78-9*len(current_weather))/2)+9*i 
                 self.display.draw_bitarray(w_char, start_x,64,9,16)
                 i+=1
-            
+
             x = 9 if len(today_aqi)==9 else 5
             for char in today_aqi:
                 if len(char) > 100:
@@ -104,7 +104,7 @@ class OTV():
             # for char in current_temp:
                 # self.display.draw_bitarray(w_char, 0,32,9,16)
         else:
-            pass 
+            pass
             # self.display.draw_image("weather data error！")
 
     def show_three_day_weather(self):
@@ -129,14 +129,14 @@ class OTV():
         if ":" in host:
             host, port = host.split(":", 1)
             port = int(port)
-        
+
         addr = socket.getaddrinfo(host, port)[0][-1]
         if not file_name:
             file_name = path.split('/')[-1]
         s = socket.socket()
         s.connect(addr)
         s.send(bytes('GET /%s HTTP/1.0\r\nHost: %s\r\n\r\n' % (path, host), 'utf8'))
-        
+
         while True:
             data = s.readline()
             if not data or data == b"\r\n":
@@ -150,7 +150,7 @@ class OTV():
                         f.write(data)
                     else:
                         download = file_name
-                        break 
+                        break
         else:
             with open(file_name, 'w') as f:
                 while True:
@@ -158,8 +158,8 @@ class OTV():
                     if data:
                         f.write(data)
                     else:
-                        download = file_name 
-                        break 
+                        download = file_name
+                        break
         s.close()
         return download
 
