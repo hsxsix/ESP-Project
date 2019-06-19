@@ -27,8 +27,7 @@ class SmartLight():
         self.int_err_count = 0
         self.light_intensity = 0
         self.sensor_interrupt = 0
-        self.button_interrupt_1 = 0
-        self.button_interrupt_2 = 0
+        self.button_interrupt = 0
         self.current_color = [255,255,255]
         self.auto_human = config.AUTO_HUMAN
         self.auto_sound = config.AUTO_SOUND
@@ -53,10 +52,9 @@ class SmartLight():
 
         self.human_sensor_1 = Pin(config.HUMAN_SENSOR_PIN_1, Pin.IN, Pin.PULL_UP)
         self.human_sensor_2 = Pin(config.HUMAN_SENSOR_PIN_2, Pin.IN, Pin.PULL_UP)
-        self,human_sensor_3 = Pin(config.HUMAN_SENSOR_PIN_3, Pin.IN, Pin.PULL_UP)
+        self.human_sensor_3 = Pin(config.HUMAN_SENSOR_PIN_3, Pin.IN, Pin.PULL_UP)
         self.sound_sensor = Pin(config.SOUND_SENSOR_PIN, Pin.IN, Pin.PULL_UP)
-        self.button_1 = Pin(config.BUTTON_PIN_1, Pin.IN, Pin.PULL_UP)
-        self.button_2 = Pin(config.BUTTON_PIN_2, Pin.IN, Pin.PULL_UP)
+        self.button = Pin(config.BUTTON_PIN_1, Pin.IN, Pin.PULL_UP)
 
     def mqtt_connect(self):
         try:
@@ -159,8 +157,8 @@ class SmartLight():
     def sensor_action(self, pin):
         self.sensor_interrupt = self.sensor_interrupt+1
 
-    def button_action_1(self, pin):
-        self.button_interrupt_1 = self.button_action_1 + 1
+    def button_action(self, pin):
+        self.button_interrupt = self.button_action + 1
         if self.light_state == 0:
             self.set_color(config.DEFAULT_COLOR)
             self.light_state = 1
@@ -170,10 +168,6 @@ class SmartLight():
             self.light_state = 0
             self.light_status["state"] = "OFF"
         self.publish_tim.init(period=1000, mode=Timer.ONE_SHOT, callback=self.publish_light_status)
-
-
-    def button_action_2(self, pin):
-        self.button_interrupt_2 = self.button_interrupt_2 + 1
 
     def get_light_intensity(self):
         li = 540
@@ -272,8 +266,7 @@ class SmartLight():
         self.human_sensor_1.irq(trigger=Pin.IRQ_FALLING, handler=self.sensor_action)
         self.human_sensor_2.irq(trigger=Pin.IRQ_FALLING, handler=self.sensor_action)
         self.human_sensor_3.irq(trigger=Pin.IRQ_FALLING, handler=self.sensor_action)
-        self.button_1.irq(trigger=Pin.IRQ_FALLING, handler=self.button_action_1)
-        self.button_2.irq(trigger=Pin.IRQ_FALLING, handler=self.button_action_2)
+        self.button.irq(trigger=Pin.IRQ_FALLING, handler=self.button_action)
 
         try:
             loop = asyncio.get_event_loop()
