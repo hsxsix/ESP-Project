@@ -1,0 +1,13 @@
+DEVICE_NAME = "bedroom_sonoff"
+WIFI_SSID = "hsxsix"
+WIFI_PASSWD = "qwertyuiop"
+MQTT_SERVER = ""
+MQTT_PORT = 1883
+MQTT_USER = "six"
+MQTT_PASSWD = "1234!@#$"
+STATUS_TOPIC = "light/{}/state".format(DEVICE_NAME)
+SET_TOPIC = "light/{}/set".format(DEVICE_NAME)
+AVAILABILITY_TOPIC = "light/{}/availability".format(DEVICE_NAME)
+POS_TOPIC = "light/{}/power_on_state".format(DEVICE_NAME)
+MQTT_CHECK = "light/{}/check_mqtt".format(DEVICE_NAME)
+POWER_ON_STATE = 1
