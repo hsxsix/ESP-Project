@@ -27,7 +27,7 @@ class SonOff():
         self.ping_mqtt = 0
         self.ping_fail = 0
         self.button_interrupt = 0
-    
+
     def relay_control(self, value):
         self.relay.value(value)
         return self.relay.value()
@@ -72,11 +72,11 @@ class SonOff():
         elif topic == config.MQTT_CHECK:
             if int(msg) == self.ping_mqtt:
                 self.ping_fail = 0
-    
+
     def publish_device_status(self):
         if self.ping_mqtt == 0:
             self.mqtt_client.publish(config.STATE_TOPIC, self.device_status)
-    
+
     def publish_pos_status(self, value):
         if self.ping_mqtt == 0:
             self.mqtt_client.publish(config.POS_STATE_TOPIC, value)
@@ -116,7 +116,7 @@ class SonOff():
             if self.ping_fail > 3:
                 self.mqtt_client.disconnect()
                 self.mqtt_connect()
-    
+
     async def check_button(self):
         while True:
             await asyncio.sleep(0.3)
