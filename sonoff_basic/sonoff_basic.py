@@ -60,7 +60,7 @@ class SonOff():
     
     def publish_device_status(self):
         if self.ping_mqtt == 0:
-            self.mqtt_client.publish(config.STATUS_TOPIC, self.device_state)
+            self.mqtt_client.publish(config.STATUS_TOPIC, self.device_status)
     
     def publish_pos_status(self, value):
         if self.ping_mqtt == 0:
@@ -129,6 +129,3 @@ class SonOff():
             loop.run_forever()
         except Exception as e:
             print(e)
-
-sonoff = SonOff()
-sonoff.run()
