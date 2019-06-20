@@ -74,11 +74,11 @@ class SonOff():
                 self.ping_fail = 0
 
     def publish_device_status(self):
-        if self.ping_mqtt == 0:
+        if self.ping_fail == 0:
             self.mqtt_client.publish(config.STATE_TOPIC, self.device_status)
 
     def publish_pos_status(self, value):
-        if self.ping_mqtt == 0:
+        if self.ping_fail == 0:
             self.mqtt_client.publish(config.POS_STATE_TOPIC, value)
 
     def button_action(self, pin):
