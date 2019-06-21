@@ -18,8 +18,9 @@ class SonOff():
             self.relay_control(1)
             self.led_control(0)
             self.device_status = "ON"
-        self.mqtt_client = MQTTClient(config.DEVICE_NAME, config.MQTT_SERVER,
-                        config.MQTT_PORT, config.MQTT_USER, config.MQTT_PASSWD)
+        self.mqtt_client = MQTTClient(client_id=config.DEVICE_NAME, server=config.MQTT_SERVER,
+                        port=config.MQTT_PORT, user=config.MQTT_USER, passwd=config.MQTT_PASSWD,
+                        keepalive=60)
         self.mqtt_client.set_callback(self.sub_callback)
         self.mqtt_client.set_last_will(config.AVAILABILITY_TOPIC, "offline")
         self.ping_mqtt = 0
@@ -37,10 +38,12 @@ class SonOff():
     def mqtt_connect(self):
         try:
             self.mqtt_client.connect()
-            for topic in [config.STATE_TOPIC, config.SET_TOPIC, config.POS_STATE_TOPIC, config.POS_SET_TOPIC, config.MQTT_CHECK]:
+            for topic in [config.SET_TOPIC, config.POS_SET_TOPIC, config.MQTT_CHECK]:
                 self.mqtt_client.subscribe(topic)
+            self.publish_device_status()
+            self.publish_pos_status("ON" if config.POWER_ON_STATE else "OFF")
         except:
-            pass
+            self.ping_fail += 1
 
     def sub_callback(self, topic, msg):
         topic = topic.decode('utf-8')
@@ -114,7 +117,7 @@ class SonOff():
 
     async def check_button(self):
         while True:
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.4)
             if self.button_interrupt > 0:
                 self.button_interrupt = 0
                 if self.device_status == "ON":
@@ -130,8 +133,6 @@ class SonOff():
     def run(self):
         self.button.irq(trigger=Pin.IRQ_FALLING, handler=self.button_action)
         self.mqtt_connect()
-        self.publish_device_status()
-        self.publish_pos_status("ON" if config.POWER_ON_STATE else "OFF")
         loop = asyncio.get_event_loop()
         loop.create_task(self.check_message())
         loop.create_task(self.check_mqtt())
