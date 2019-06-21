@@ -14,11 +14,9 @@ class SonOff():
     device_status = "OFF"
 
     def __init__(self):
-        print("initialize...check PowerOnState")
         if config.POWER_ON_STATE:
-            print("PowerONState = 1, turn on relay...")
             self.relay_control(1)
-            self.led_control(1)
+            self.led_control(0)
             self.device_status = "ON"
         self.mqtt_client = MQTTClient(config.DEVICE_NAME, config.MQTT_SERVER,
                         config.MQTT_PORT, config.MQTT_USER, config.MQTT_PASSWD)
@@ -37,30 +35,24 @@ class SonOff():
         return self.led.value()
 
     def mqtt_connect(self):
-        print("connect to mqtt server...")
         try:
             self.mqtt_client.connect()
-            print("connect to mqtt server success!")
             for topic in [config.STATE_TOPIC, config.SET_TOPIC, config.POS_STATE_TOPIC, config.POS_SET_TOPIC, config.MQTT_CHECK]:
                 self.mqtt_client.subscribe(topic)
-            self.publish_device_status()
-            self.publish_pos_status("ON" if config.POWER_ON_STATE else "OFF")
         except:
-            print("mqtt server connect failed!")
             pass
 
     def sub_callback(self, topic, msg):
         topic = topic.decode('utf-8')
         msg = msg.decode('utf-8')
-        print("recive mqtt message:{}, from {}".format(msg, topic))
         if topic == config.SET_TOPIC:
             if msg == "ON":
                 self.relay_control(1)
-                self.led_control(1)
+                self.led_control(0)
                 self.device_status = "ON"
             else:
                 self.relay_control(0)
-                self.led_control(0)
+                self.led_control(1)
                 self.device_status = "OFF"
             self.publish_device_status()
         elif topic == config.POS_SET_TOPIC:
@@ -89,12 +81,15 @@ class SonOff():
             config_list = rf.readlines()
         for config_name, config_value in config_data.items():
             if config_name in config_map:
-                if config_value.isdigit():
+                if isinstance(config_value, int):
+                    config_list[config_map[config_name]] = "{} = {}\n".format(config_name, config_value)
+                elif config_value.isdigit():
                     config_list[config_map[config_name]] = "{} = {}\n".format(config_name, int(config_value))
                 else:
                     config_list[config_map[config_name]] = '{} = "{}"\n'.format(config_name, config_value)
         with open('config.py', 'w') as wf:
-            wf.writelines(config_list)
+            for conf in config_list:
+                wf.write(conf)
 
     async def check_message(self):
         while True:
@@ -111,7 +106,7 @@ class SonOff():
             self.mqtt_client.publish(config.MQTT_CHECK, str(self.ping_mqtt))
             self.ping_fail += 1
 
-            if self.ping_fail > 6:
+            if self.ping_fail > 10:
                 pass
             if self.ping_fail > 3:
                 self.mqtt_client.disconnect()
@@ -121,26 +116,27 @@ class SonOff():
         while True:
             await asyncio.sleep(0.3)
             if self.button_interrupt > 0:
-                print("pressed the button...")
+                self.button_interrupt = 0
                 if self.device_status == "ON":
                     self.relay_control(0)
-                    self.led_control(0)
+                    self.led_control(1)
                     self.device_status = "OFF"
                 else:
                     self.relay_control(1)
-                    self.led_control(1)
-                    self.device_status == "ON"
-                self.button_interrupt = 0
+                    self.led_control(0)
+                    self.device_status = "ON"
                 self.publish_device_status()
 
     def run(self):
         self.button.irq(trigger=Pin.IRQ_FALLING, handler=self.button_action)
         self.mqtt_connect()
+        self.publish_device_status()
+        self.publish_pos_status("ON" if config.POWER_ON_STATE else "OFF")
         loop = asyncio.get_event_loop()
         loop.create_task(self.check_message())
         loop.create_task(self.check_mqtt())
         loop.create_task(self.check_button())
         try:
             loop.run_forever()
-        except Exception as e:
-            print(e)
+        except:
+            pass
