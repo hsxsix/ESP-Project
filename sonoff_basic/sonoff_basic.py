@@ -42,6 +42,7 @@ class SonOff():
                 self.mqtt_client.subscribe(topic)
             self.publish_device_status()
             self.publish_pos_status("ON" if config.POWER_ON_STATE else "OFF")
+            self.mqtt_client.publish(config.AVAILABILITY_TOPIC, "online")
         except:
             self.ping_fail += 1
 
