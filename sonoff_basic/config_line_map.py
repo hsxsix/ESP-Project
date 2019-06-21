@@ -9,7 +9,8 @@ config_map = {
         "STATUS_TOPIC": 7,
         "SET_TOPIC": 8,
         "AVAILABILITY_TOPIC": 9,
-        "POS_TOPIC": 10,
-        "MQTT_CHECK": 11,
-        "POWER_ON_STATE": 12
+        "POS_STATE_TOPIC": 10,
+        "POS_SET_TOPIC": 11,
+        "MQTT_CHECK": 12,
+        "POWER_ON_STATE": 13
         }
