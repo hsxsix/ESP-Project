@@ -1,10 +1,10 @@
 DEVICE_NAME = "bedroom_sonoff"
-WIFI_SSID = "hsxsix"
-WIFI_PASSWD = "qwertyuiop"
-MQTT_SERVER = ""
+WIFI_SSID = "CMCC-wtT4"
+WIFI_PASSWD = "9tg5fm65"
+MQTT_SERVER = "118.24.144.127"
 MQTT_PORT = 1883
 MQTT_USER = "six"
-MQTT_PASSWD = "1234!@#$"
+MQTT_PASSWD = "1234$#@!"
 STATE_TOPIC = "light/{}/state".format(DEVICE_NAME)
 SET_TOPIC = "light/{}/set".format(DEVICE_NAME)
 AVAILABILITY_TOPIC = "light/{}/availability".format(DEVICE_NAME)
